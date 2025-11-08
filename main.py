@@ -56,7 +56,7 @@ def setup_geckodriver():
             print(f"🦊 Найдена версия Firefox: {firefox_version}")
         except (FileNotFoundError, subprocess.SubprocessError):
             firefox_version = "не найден"
-            print("⚠️ Firefox не найден или недоступен для проверки.")
+            print("⚠️ Firefox не найден или не доступен для проверки.")
 
         # 3️⃣ Проверяем, установлен ли уже geckodriver
         current_driver_path = None
@@ -119,7 +119,7 @@ def save_last_query(query):
     try:
         with open("last_query.txt", "w", encoding="utf-8") as f:
             f.write(query.strip())
-    except OSError as e:
+    except (IOError, OSError) as e:  # 🔥 Конкретные исключения
         print(f"⚠️ Не удалось сохранить последний запрос: {e}")
 
 def load_last_query():
@@ -144,15 +144,12 @@ def open_article(browser, query):
     time.sleep(1.5)
 
     try:
-        # 1️⃣ Находим поле поиска на странице и вводим запрос
         search_box = browser.find_element(By.NAME, "search")
         search_box.clear()
         search_box.send_keys(query)
         search_box.submit()
         time.sleep(2.5)
 
-        # 2️⃣ Проверяем, существует ли статья
-        # Если мы попали на страницу с текстом "Страницы, соответствующие запросу", значит, точной статьи нет
         if "страницы, соответствующие запросу" in browser.page_source.lower() or "результаты поиска" in browser.title.lower():
             print("⚠️ Статья не найдена. Вот несколько похожих вариантов:")
             results = browser.find_elements(By.CSS_SELECTOR, "ul.mw-search-results li a")
@@ -183,17 +180,15 @@ def open_article(browser, query):
             browser.get(link)
             time.sleep(2)
         else:
-            # Если статья существует, просто открываем её
             time.sleep(1.5)
 
-        # 3️⃣ Проверяем корректность загрузки статьи
         title_text = browser.title
         if "википедия" not in title_text.lower():
             print("⚠️ Ошибка: страница не похожа на статью Википедии. Попробуй другой запрос.")
             return False
 
         print(f"📖 Открыта статья: {title_text}\n")
-        save_last_query(query)  # Сохраняем успешный запрос
+        save_last_query(query)
         return True
 
     except Exception as e:
@@ -201,7 +196,7 @@ def open_article(browser, query):
         return False
 
 # ==========================================================
-# 📜 ФУНКЦИЯ 4. Листание параграфов / абзацев статьи
+# 📜 ФУНКЦИЯ 4. Листание параграфы / абзацев статьи
 # ==========================================================
 def read_paragraphs(browser, query):
     """Выводит параграфы текущей статьи"""
@@ -251,14 +246,13 @@ def choose_related_article(browser):
         a for a in links
         if a.get_attribute("href")
         and "/wiki/" in a.get_attribute("href")
-        and not any(x in a.get_attribute("href") for x in [":", "#"])  # Убираем служебные ссылки
+        and not any(x in a.get_attribute("href") for x in [":", "#"])
     ]
 
     if not valid_links:
         print("❌ Связанных статей не найдено.")
         return False
 
-    # Отбираем максимум 10 уникальных ссылок с названиями
     unique_links = []
     for a in valid_links:
         title = a.text.strip()
@@ -297,7 +291,6 @@ def main():
 
     print("🌍 Добро пожаловать в консольную интерактивную Википедию на Python!")
 
-    # Загружаем последний запрос, если он есть
     last_query = load_last_query()
     if last_query:
         choice = input(f"💾 Найден предыдущий запрос: «{last_query}». Продолжить с него? (д/н): ").lower()
@@ -308,7 +301,6 @@ def main():
     else:
         query = input("🔎 Введи запрос для поиска: ").strip()
 
-    # Запускаем браузер
     browser = webdriver.Firefox()
     browser.maximize_window()
 
@@ -329,24 +321,28 @@ def main():
 
         if action == "а":
             read_paragraphs(browser, query)
+            time.sleep(3)
         elif action == "б":
             go_to_random_link(browser)
+            time.sleep(3)
         elif action == "в":
             choose_related_article(browser)
+            time.sleep(3)
         elif action == "г":
             new_query = input("🧠 Введи новый запрос для поиска: ").strip()
             query = new_query
             open_article(browser, query)
+            time.sleep(3)
         elif action == "д":
             print("👋 До встречи! Браузер закрыт.")
             browser.quit()
             break
         else:
             print("⚠️ Некорректный выбор. Попробуй снова.")
+            time.sleep(2)
 
 # ==========================================================
 # 🚀 ЗАПУСК ПРОГРАММЫ
 # ==========================================================
 if __name__ == "__main__":
     main()
-
